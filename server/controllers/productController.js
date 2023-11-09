@@ -81,42 +81,78 @@ export const braintreePaymentController = async (req, res) => {
   }
 };
 
+// export const razorpayPaymentController = async (req, res) => {
+//   try {
+//     const { cart } = req.body;
+
+//     // console.log("cart is ", cart);
+
+//     const currency = "INR";
+//     let total = 0;
+//     cart.map((item) => {
+//       total = total + item.price - (item.price * item.offer) / 100;
+//     });
+
+//     // console.log("total amout is ", total);
+
+//     const order = await instance.orders.create({
+//       amount: total,
+//       currency,
+//     });
+
+//     // if (order !== undefined) {
+//     //   const ord = new orderModel({
+//     //     products: cart,
+
+//     //     payment: order,
+//     //     buyer: req.user._id,
+//     //   }).save();
+//     // }
+
+//     // console.log("oders is ", order);
+
+//     res.status(200).json({ orderId: order.id });
+//   } catch (error) {
+//     console.log("Error while razorpay payment ", error.message);
+//   }
+// };
 export const razorpayPaymentController = async (req, res) => {
   try {
     const { cart } = req.body;
+    console.log("sdfs", cart);
 
-    // console.log("cart is ", cart);
+    if (!cart || !Array.isArray(cart) || cart.length === 0) {
+      return res.status(400).json({ error: "Invalid cart data" });
+    }
 
     const currency = "INR";
-    let total = 0;
-    cart.map((item) => {
-      total = total + item.price - (item.price * item.offer) / 100;
+     let total = 0;
+    
+    cart.forEach((item) => {
+      if (item.price && item.offer) {
+        total += item.price - (item.price * item.offer) / 100;
+      }
     });
 
-    // console.log("total amout is ", total);
+    if (total <= 0) {
+      return res.status(400).json({ error: "Invalid total amount" });
+    }
 
+
+    console.log(total);
     const order = await instance.orders.create({
-      amount: total,
+      amount: total * 100,
       currency,
     });
 
-    // if (order !== undefined) {
-    //   const ord = new orderModel({
-    //     products: cart,
-
-    //     payment: order,
-    //     buyer: req.user._id,
-    //   }).save();
-    // }
-
-    // console.log("oders is ", order);
-
+    console.log("tfjls",order)
     res.status(200).json({ orderId: order.id });
   } catch (error) {
-    console.log("Error while razorpay payment ", error.message);
-  }
+    console.log("Error while processing Razorpay payment: ", error.message);
+    // Send an error response back to the frontend
+    res.status(500).json({ error: "Internal server error" });
+  }
 };
-
 export const paymentSuccessController = async (req, res) => {
   try {
     const { cart, payment } = req.body;
