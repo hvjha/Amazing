@@ -21,7 +21,7 @@ var gateway = new braintree.BraintreeGateway({
 });
 
 var instance = new Razorpay({
-  key_id: process.env.KEY_ID,
+  key_id: 'rzp_test_0552ObytJA7FtZ',
   key_secret: process.env.KEY_SECRET,
 });
 
