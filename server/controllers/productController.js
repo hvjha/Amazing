@@ -6,177 +6,169 @@ import orderModel from "../models/orderModel.js";
 
 import Razorpay from "razorpay";
 
+// import formidable from "express-formidable";
 import dotenv from "dotenv";
 
 import fs from "fs";
 
 dotenv.config();
 
-// var gateway = new braintree.BraintreeGateway({
-//   environment: braintree.Environment.Sandbox,
-//   merchantId: process.env.BRAINTREE_MERCHANT_ID,
-//   publicKey: process.env.BRAINTREE_PUBLIC_KEY,
-//   privateKey: process.env.BRAINTREE_PRIVATE_KEY,
-// });
+var gateway = new braintree.BraintreeGateway({
+  environment: braintree.Environment.Sandbox,
+  merchantId: process.env.BRAINTREE_MERCHANT_ID,
+  publicKey: process.env.BRAINTREE_PUBLIC_KEY,
+  privateKey: process.env.BRAINTREE_PRIVATE_KEY,
+});
 
-// payment gateway api
+var instance = new Razorpay({
+  key_id: process.env.KEY_ID,
+  key_secret: process.env.KEY_SECRET,
+});
 
-var instance=new Razorpay({
-  key_id:"rzp_test_0552ObytJA7FtZ",
-  key_secret:"TncRh2Sz5oobr8Q8d23sUGjW"
-})
-///////////////ID:rzp_test_0552ObytJA7FtZ
-/////////////////////key:TncRh2Sz5oobr8Q8d23sUGjW
+//payment gateway api
+export const braintreeTokenController = async (req, res) => {
+  try {
+    gateway.clientToken.generate({}, function (err, response) {
+      if (err) {
+        res.status(500).send({
+          success: false,
+          message: "Error while getting payment token",
+          error: err,
+        });
+      } else {
+        res.send(response);
+      }
+    });
+  } catch (error) {
+    console.log("Error while getting payment token ", error.message);
+  }
+};
 
-// export const braintreeTokenController = async (req, res) => {
-//   try {
-//     gateway.clientToken.generate({}, function (err, response) {
-//       if (err) {
-//         res.status(500).send({
-//           success: false,
-//           message: "Error while getting payment token",
-//           error: err,
-//         });
-//       } else {
-//         res.send(response);
-//       }
-//     });
-//   } catch (error) {
-//     console.log("Error while getting payment token ", error.message);
-//   }
-// };
+export const braintreePaymentController = async (req, res) => {
+  try {
+    const { cart, nonce } = req.body;
+    let total = 0;
+    cart.map((item) => {
+      total = total + item.price;
+    });
 
-// export const braintreePaymentController = async (req, res) => {
-//   try {
-//     const { cart, nonce } = req.body;
-//     let total = 0;
-//     cart.map((item) => {
-//       total = total + item.price;
-//     });
+    let newTransaction = gateway.transaction.sale(
+      {
+        amount: total,
+        paymentMethodNonce: nonce,
+        options: {
+          submitForSettlement: true,
+        },
+      },
+      function (error, result) {
+        if (result) {
+          const order = new orderModel({
+            products: cart,
+            payment: result,
+            buyer: req.user._id,
+          }).save();
 
-//     let newTransaction = gateway.transaction.sale(
-//       {
-//         amount: total,
-//         paymentMethodNonce: nonce,
-//         options: {
-//           submitForSettlement: true,
-//         },
-//       },
-//       function (error, result) {
-//         if (result) {
-//           const order = new orderModel({
-//             products: cart,
-//             payment: result,
-//             buyer: req.user._id,
-//           }).save();
-
-//           res.json({
-//             ok: true,
-//           });
-//         } else {
-//           res.status(500).send(error);
-//         }
-//       }
-//     );
-//   } catch (error) {
-//     console.log("Error while making payment ", error.message);
-//   }
-// };
-
-// export const razorpayPaymentController = async (req, res) => {
-//   try {
-//     const { cart } = req.body;
-//     console.log("sdfs",cart)
-
-//     // const currency = "INR";
-//     // let total = 0;
-//     // cart.map((item) => {
-//     //   total = total + item.price - (item.price * item.offer) / 100;
-//     // });
-
-//     // const order = await instance.orders.create({
-//     //   amount: total,
-//     //   currency,
-//     // });
-
-//     // res.status(200).json({ orderId: order.id });
-//     res.status(200);
-//   } catch (error) {
-//     console.log("Error while razorpay payment ", error.message);
-//   }
-// };
+          res.json({
+            ok: true,
+          });
+        } else {
+          res.status(500).send(error);
+        }
+      }
+    );
+  } catch (error) {
+    console.log("Error while making payment ", error.message);
+  }
+};
 
 export const razorpayPaymentController = async (req, res) => {
   try {
     const { cart } = req.body;
-    console.log("sdfs", cart);
+
+    // console.log("cart is ", cart);
 
     const currency = "INR";
-     let total = 0;
-         cart.map((item) => {
+    let total = 0;
+    cart.map((item) => {
       total = total + item.price - (item.price * item.offer) / 100;
     });
-        const order = await instance.orders.create({
+
+    // console.log("total amout is ", total);
+
+    const order = await instance.orders.create({
       amount: total,
       currency,
     });
+
+    // if (order !== undefined) {
+    //   const ord = new orderModel({
+    //     products: cart,
+
+    //     payment: order,
+    //     buyer: req.user._id,
+    //   }).save();
+    // }
+
+    // console.log("oders is ", order);
+
     res.status(200).json({ orderId: order.id });
   } catch (error) {
-    console.log("Error while processing Razorpay payment: ", error.message);
-    // Send an error response back to the frontend
-    res.status(500).json({ error: "Internal server error" });
+    console.log("Error while razorpay payment ", error.message);
   }
 };
 
-// export const paymentSuccessController = async (req, res) => {
-//   try {
-//     const { cart,payment } = req.body;
+export const paymentSuccessController = async (req, res) => {
+  try {
+    const { cart, payment } = req.body;
 
-//     let total = 0;
+    // console.log("cart is ", cart);
 
-//     cart.forEach(async (item) => {
+    let total = 0;
 
-// // Find the product by ID
-// const product = await  Product.findById(item.productId);
+    cart.forEach(async (item) => {
+      // Find the product by ID
+      const product = await Product.findById(item.productId);
 
-// if (product) {
-// // Find the index of the size in the list array
-// const sizeIndex = product.list.findIndex(
-//   (size) => size.size === item.size
-// );
+      if (product) {
+        // Find the index of the size in the list array
+        const sizeIndex = product.list.findIndex(
+          (size) => size.size === item.size
+        );
 
-// if (sizeIndex !== -1) {
-// // Decrease the quantity of the selected size
-// product.list[sizeIndex].quantity -= item.quantity;
+        if (sizeIndex !== -1) {
+          // Decrease the quantity of the selected size
+          product.list[sizeIndex].quantity -= item.quantity;
 
-// // Save the updated product
-// await product.save();
-//     }
-//   }
-// })
+          // Save the updated product
+          await product.save();
+        }
+      }
+    });
 
-// cart.map((item) => {
-//   total = total + item.price*item.quantity - (item.price * item.offer*item.quantity) / 100;
-// });
-//   const order = await  new orderModel({
-//     products: cart,
-//     payment: payment,
-//     total:total,
-//     buyer: req.user._id,
-//   }).save();
+    cart.map((item) => {
+      total =
+        total +
+        item.price * item.quantity -
+        (item.price * item.offer * item.quantity) / 100;
+    });
+    const order = await new orderModel({
+      products: cart,
+      payment: payment,
+      total: total,
+      buyer: req.user._id,
+    }).save();
+    // console.log("oders is ", order);
 
-//     res.status(200).json({ order: order });
-//   } catch (error) {
-//     console.log("Error while order placing payment ", error.message);
-//   }
-// };
+    res.status(200).json({ order: order });
+  } catch (error) {
+    console.log("Error while order placing payment ", error.message);
+  }
+};
 
 export const createProductController = async (req, res) => {
-  // console.log("jrfje ndfj");
   try {
-    console.log("user ss  hhh ", req);
-
-    const { name, price, description, quantity, subCategory, list } = req.fields;
+    const { name, price, description, quantity, subCategory, list } =
+      req.fields;
     console.log("user ss ", req.fields);
     let parsedList;
     if (typeof list === "string") {
@@ -191,7 +183,7 @@ export const createProductController = async (req, res) => {
 
     switch (true) {
       case !name:
-        // console.log("hiiii 122");
+        console.log("hiiii 122");
         return res
           .status(500)
           .send({ error: "Name cannot be empty", success: false });
@@ -217,12 +209,12 @@ export const createProductController = async (req, res) => {
           .status(500)
           .send({ error: "Category cannot be empty", success: false });
       case photo && photo.size > 1000000:
-        console.log("Image size is larger then 1mb");
+        console.log("s1 os large");
         return res
           .status(500)
           .send({ error: "Size of photo is too large", success: false });
       case pic2 && pic2.size > 1000000:
-        console.log("Image size is larger then");
+        console.log("s1 deefger os large");
         return res
           .status(500)
           .send({ error: "Size of photo is too large", success: false });
@@ -383,90 +375,197 @@ export const deleteProductController = async (req, res) => {
   }
 };
 
+// export const updateProductController = async (req, res) => {
+//   try {
+//     const { name, price, description, quantity, category } = req.fields;
+
+//     const { photo } = req.files;
+
+//     //validation
+
+//     switch (true) {
+//       case !name:
+//         return res
+//           .status(500)
+//           .send({ error: "Name cannot be empty", success: false });
+
+//       case !price:
+//         return res
+//           .status(500)
+//           .send({ error: "Price is required", success: false });
+//       case !description:
+//         return res
+//           .status(500)
+//           .send({ error: "Description cannot be empty", success: false });
+//       case !quantity:
+//         return res
+//           .status(500)
+//           .send({ error: "Quantity cannot be empty", success: false });
+//       case !category:
+//         return res
+//           .status(500)
+//           .send({ error: "Category cannot be empty", success: false });
+//       case photo && photo.size > 1000000:
+//         return res
+//           .status(500)
+//           .send({ error: "Size of photo is too large", success: false });
+//     }
+
+//     const product = await Product.findByIdAndUpdate(
+//       req.params.pid,
+//       {
+//         ...req.fields,
+//         slug: slugify(name),
+//       },
+//       { new: true }
+//     );
+
+//     if (photo) {
+//       product.photo.data = fs.readFileSync(photo.path);
+//       product.photo.contentType = photo.type;
+//     }
+//     await product.save();
+
+//     res.status(201).send({
+//       success: true,
+//       message: "Product updated successfully",
+//       product,
+//     });
+//   } catch (error) {
+//     console.log("Error while updating product ", error.message);
+//     res.status(500).send({
+//       message: "Error while updating product",
+//       error,
+//       success: false,
+//     });
+//   }
+// };
+
+// export const productFilterController = async (req, res) => {
+//   try {
+//     const { checked, radio } = req.body;
+
+//     let args = {};
+//     if (checked.length > 0) {
+//       args.category = checked;
+//     }
+
+//     if (radio.length) args.price = { $gte: radio[0], $lte: radio[1] };
+
+//     const products = await Product.find(args);
+//     res.status(200).send({
+//       success: true,
+//       products,
+//     });
+//   } catch (error) {
+//     console.log("Error while filtering products ", error.message);
+//     res.status(400).send({
+//       error,
+//       success: false,
+//       message: "Error while filtering products",
+//     });
+//   }
+// };
+
 export const updateProductController = async (req, res) => {
   try {
-    const { name, price, description, quantity, category } = req.fields;
+    const productId = req.params.pid; // Product ID for which you want to update the list
+    const { updatedList } = req.body; // The updated list you receive from the frontend
 
-    const { photo } = req.files;
+    // Find the product by ID
+    const product = await Product.findById(productId);
 
-    //validation
-
-    switch (true) {
-      case !name:
-        return res
-          .status(500)
-          .send({ error: "Name cannot be empty", success: false });
-
-      case !price:
-        return res
-          .status(500)
-          .send({ error: "Price is required", success: false });
-      case !description:
-        return res
-          .status(500)
-          .send({ error: "Description cannot be empty", success: false });
-      case !quantity:
-        return res
-          .status(500)
-          .send({ error: "Quantity cannot be empty", success: false });
-      case !category:
-        return res
-          .status(500)
-          .send({ error: "Category cannot be empty", success: false });
-      case photo && photo.size > 1000000:
-        return res
-          .status(500)
-          .send({ error: "Size of photo is too large", success: false });
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
     }
 
-    const product = await Product.findByIdAndUpdate(
-      req.params.pid,
-      {
-        ...req.fields,
-        slug: slugify(name),
-      },
-      { new: true }
-    );
+    // Update the list with the new data
+    product.list = updatedList;
 
-    if (photo) {
-      product.photo.data = fs.readFileSync(photo.path);
-      product.photo.contentType = photo.type;
-    }
+    // Save the updated product
     await product.save();
 
-    res.status(201).send({
+    res.status(200).json({
       success: true,
-      message: "Product updated successfully",
+      message: "Product list updated successfully",
       product,
     });
   } catch (error) {
-    console.log("Error while updating product ", error.message);
-    res.status(500).send({
-      message: "Error while updating product",
-      error,
+    console.error("Error while updating product list:", error.message);
+    res.status(500).json({
       success: false,
+      message: "Error while updating product list",
+      error: error.message,
     });
   }
 };
+
+// export const productFilterController = async (req, res) => {
+//   try {
+//     const { checked, radio } = req.body;
+
+//     let args = {};
+//     if (checked.length > 0) {
+//       args.category = checked;
+//     }
+
+//     if (radio.length) args.price = { $gte: radio[0], $lte: radio[1] };
+
+//     console.log("args ", args);
+
+//     const products = await Product.find(args);
+
+//     console.log("find res ", products);
+//     res.status(200).send({
+//       success: true,
+//       products,
+//     });
+//   } catch (error) {
+//     console.log("Error while filtering products ", error.message);
+//     res.status(400).send({
+//       error,
+//       success: false,
+//       message: "Error while filtering products",
+//     });
+//   }
+// };
+
+
 
 export const productFilterController = async (req, res) => {
   try {
     const { checked, radio } = req.body;
 
-    let args = {};
+    // Create an empty object to store filter criteria
+    const filterCriteria = {};
+
+    // If "checked" array contains categories, add them to the filter criteria
     if (checked.length > 0) {
-      args.category = checked;
+      filterCriteria.category = { $in: checked };
     }
 
-    if (radio.length) args.price = { $gte: radio[0], $lte: radio[1] };
+    // If "radio" array contains price range, add it to the filter criteria
+    if (radio.length === 2) {
+      filterCriteria["list.price"] = {
+        $gte: radio[0],
+        $lte: radio[1],
+      };
+    }
 
-    const products = await Product.find(args);
+    // Use Mongoose to query the database with the filter criteria
+    const products = await Product.find(filterCriteria);
+
+    // console.log("find res ", products);
+
     res.status(200).send({
       success: true,
       products,
     });
   } catch (error) {
-    console.log("Error while filtering products ", error.message);
+    console.error("Error while filtering products: ", error.message);
     res.status(400).send({
       error,
       success: false,
@@ -474,6 +573,7 @@ export const productFilterController = async (req, res) => {
     });
   }
 };
+
 
 export const productCountController = async (req, res) => {
   try {

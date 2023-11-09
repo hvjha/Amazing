@@ -13,8 +13,8 @@ import {
   searchProductController,
   relatedProductController,
   productCategoryController,
-  // braintreeTokenController,
-  // braintreePaymentController,
+  braintreeTokenController,
+  braintreePaymentController,
   productPicController,
   razorpayPaymentController,
   paymentSuccessController,
@@ -28,8 +28,8 @@ const router = express.Router();
 
 router.post(
   "/create-product",
-  // requireSignIn,
-  // isAdmin,
+  requireSignIn,
+  isAdmin,
   formidable(),
   createProductController
 );
@@ -38,6 +38,7 @@ router.get("/get-products", getproductController);
 
 router.get("/get-product/:slug", getSingleProductController);
 router.get("/get-product-id/:id", getSingleProductController);
+
 
 router.get("/product-photo/:pid", productPhotoController);
 router.get("/product-pic/:pid", productPicController);
@@ -48,7 +49,7 @@ router.put(
   "/update-product/:pid",
   requireSignIn,
   isAdmin,
-  formidable(),
+  
   updateProductController
 );
 
@@ -74,12 +75,16 @@ router.get("/product-category/:slug", productCategoryController);
 
 //payment route
 
-// router.get("/braintree/token", braintreeTokenController);
+router.get("/braintree/token", braintreeTokenController);
 
-// router.post("/braintree/payment", requireSignIn, braintreePaymentController);
+router.post("/braintree/payment", requireSignIn, braintreePaymentController);
 
 router.post("/razorpay/payment", requireSignIn, razorpayPaymentController);
 
-// router.post("/payment-success", requireSignIn, paymentSuccessController);
+router.post("/payment-success", requireSignIn, paymentSuccessController);
 
 export default router;
+
+// xjTeANYupIGtXf7ZNrNHJhRs
+// rzp_test_IEOm6xzfDCFWYm
+// xjTeANYupIGtXf7ZNrNHJhRs

@@ -118,7 +118,7 @@ const CartComponent = ({ product, removeCartItem }) => {
         <img
           src={`${URL}/api/v1/product/product-photo/${product._id}`}
           // style={{ width: "120px", height: "120px" }}
-          className="card-img-top"
+          className="card-imag-top"
           alt={product.name}
         />
       </div>

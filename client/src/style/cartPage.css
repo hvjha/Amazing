@@ -1,7 +1,12 @@
 
 .cart-page{
     padding-top: 5rem;
-   
+   /* border: 1px solid red; */
+}
+.card-imag-top{
+    width:17rem;
+    height: 17rem;
+    border-radius: 1rem;
 }
 
 .pro-price-cart {

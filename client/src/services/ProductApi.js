@@ -105,7 +105,7 @@ export const getCategoryProduct=async(slug)=>{
 
 export const getAllOrders=async()=>{
      const {data}=await axios.get(`${URL}/api/v1/auth/orders`);
-     console.log("all my orders ",data)
+    //  console.log("all my orders ",data)
      return data;
 }
 
